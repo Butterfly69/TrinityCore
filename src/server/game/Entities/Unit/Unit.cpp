@@ -6632,49 +6632,23 @@ bool Unit::HandleDummyAuraProc(Unit* victim, uint32 damage, AuraEffect* triggere
             // Light's Beacon - Beacon of Light
             if (dummySpell->Id == 53651)
             {
-                if (!victim)
-                    return false;
-                triggered_spell_id = 0;
-                Unit* beaconTarget = NULL;
-                if (GetTypeId() != TYPEID_PLAYER)
+                // Get target of beacon of light
+                if (Unit* beaconTarget = triggeredByAura->GetBase()->GetCaster())
                 {
-                    beaconTarget = triggeredByAura->GetBase()->GetCaster();
-                    if (!beaconTarget || beaconTarget == this || !(beaconTarget->GetAura(53563, victim->GetGUID())))
+                    // do not proc when target of beacon of light is healed
+                    if (beaconTarget == this)
                         return false;
-                    basepoints0 = int32(damage);
-                    triggered_spell_id = procSpell->IsRankOf(sSpellMgr->GetSpellInfo(635)) ? 53652 : 53654;
-                }
-                else
-                {    // Check Party/Raid Group
-                    if (Group* group = ToPlayer()->GetGroup())
+                    // check if it was heal by paladin which casted this beacon of light
+                    if (beaconTarget->GetAura(53563, victim->GetGUID()))
                     {
-                        for (GroupReference* itr = group->GetFirstMember(); itr != NULL; itr = itr->next())
+                        if (beaconTarget->IsWithinLOSInMap(victim))
                         {
-                            if (Player* member = itr->getSource())
-                            {
-                                // check if it was heal by paladin which casted this beacon of light
-                                if (member->GetAura(53563, victim->GetGUID()))
-                                {
-                                    // do not proc when target of beacon of light is healed
-                                    if (member == this)
-                                        return false;
-
-                                    beaconTarget = member;
-                                    basepoints0 = int32(damage);
-                                    triggered_spell_id = procSpell->IsRankOf(sSpellMgr->GetSpellInfo(635)) ? 53652 : 53654;
-                                    break;
-                                }
-                            }
+                            basepoints0 = damage;
+                            victim->CastCustomSpell(beaconTarget, 53654, &basepoints0, NULL, NULL, true);
+                            return true;
                         }
                     }
                 }
-
-                if (triggered_spell_id && beaconTarget)
-                {
-                    victim->CastCustomSpell(beaconTarget, triggered_spell_id, &basepoints0, NULL, NULL, true, 0, triggeredByAura);
-                    return true;
-                }
-
                 return false;
             }
             // Judgements of the Wise
